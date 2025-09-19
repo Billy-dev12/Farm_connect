@@ -311,13 +311,20 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Logout button style */
+        .logout-item {
+            margin-top: auto;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 10px;
+        }
     </style>
 </head>
 
 <body>
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <aside class="w-64 bg-white shadow-lg z-10 slide-in">
+        <aside class="w-64 bg-white shadow-lg z-10 slide-in flex flex-col">
             <div class="p-6 border-b border-gray-200">
                 <div class="flex items-center">
                     <div
@@ -331,7 +338,7 @@
                 </div>
             </div>
 
-            <nav class="p-4">
+            <nav class="p-4 flex-1">
                 <ul>
                     <li
                         class="sidebar-item active mb-1 p-3 rounded-lg cursor-pointer flex items-center text-gray-700 hover:bg-green-50">
@@ -371,7 +378,18 @@
                 </ul>
             </nav>
 
-            <div class="absolute bottom-0 w-full p-4 border-t border-gray-200">
+            <!-- Logout Menu Item -->
+            <div class="logout-item p-4">
+                <ul>
+                    <li id="logout-btn"
+                        class="sidebar-item p-3 rounded-lg cursor-pointer flex items-center text-gray-700 hover:bg-red-50">
+                        <i class="fas fa-sign-out-alt w-5 mr-3 text-red-500"></i>
+                        <span class="font-medium">Logout</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="p-4 border-t border-gray-200">
                 <div class="flex items-center">
                     <img src="https://picsum.photos/seed/admin123/40/40.jpg" alt="Avatar"
                         class="w-10 h-10 rounded-full mr-3">
@@ -596,6 +614,9 @@
         // Add event listeners to sidebar items
         document.querySelectorAll('.sidebar-item').forEach(item => {
             item.addEventListener('click', function() {
+                // Skip for logout button
+                if (this.id === 'logout-btn') return;
+
                 // Remove active class from all items
                 document.querySelectorAll('.sidebar-item').forEach(i => {
                     i.classList.remove('active');
@@ -603,6 +624,46 @@
 
                 // Add active class to clicked item
                 this.classList.add('active');
+            });
+        });
+
+        // Logout handler
+        document.getElementById('logout-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // Create confirmation modal
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 fade-in';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                            <i class="fas fa-sign-out-alt text-red-500"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900">Konfirmasi Logout</h3>
+                    </div>
+                    <p class="text-gray-500 mb-6">Apakah Anda yakin ingin keluar dari sistem?</p>
+                    <div class="flex justify-end space-x-3">
+                        <button id="cancel-logout" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            Batal
+                        </button>
+                        <button id="confirm-logout" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Cancel logout
+            document.getElementById('cancel-logout').addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+
+            // Confirm logout
+            document.getElementById('confirm-logout').addEventListener('click', function() {
+                document.getElementById('logout-form').submit();
             });
         });
 
@@ -623,14 +684,6 @@
                     document.body.removeChild(notification);
                 }, 300);
             }, 3000);
-        });
-
-        // Logout handler
-        document.querySelector('.sidebar-item:last-child').addEventListener('click', function(e) {
-            if (e.target.textContent.includes('Logout')) {
-                e.preventDefault();
-                document.getElementById('logout-form').submit();
-            }
         });
     </script>
 </body>
