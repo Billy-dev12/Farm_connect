@@ -169,7 +169,7 @@
         </form>
 
         <div style="text-align: center; margin-top: 30px;">
-            <a href="{{ route('dashboard.customer') }}" class="back-link">
+            <a href="{{ route('konsumen.dashboard') }}" class="back-link">
                 <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
             </a>
         </div>

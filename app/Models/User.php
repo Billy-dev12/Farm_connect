@@ -26,7 +26,7 @@ class User extends Authenticatable
         'alasan_penolakan',
         'proposal_path',
         'proposal_filename',
-        'proposal_uploaded_at',
+        'proposal_uploaded_at'
     ];
 
     protected $hidden = [
@@ -80,5 +80,29 @@ class User extends Authenticatable
     public function getProposalUrl(): string
     {
         return $this->proposal_path ? asset('storage/' . $this->proposal_path) : '';
+    }
+
+    public function wishlist()
+    {
+        return $this->belongsToMany(DummyProduct::class, 'user_wishlist', 'user_id', 'dummy_product_id')
+            ->withTimestamps();
+    }
+
+    // Relasi ke Address
+    public function addresses()
+    {
+        return $this->hasMany(Address::class);
+    }
+
+    // Relasi ke Rating
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    // Relasi ke Order
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
     }
 }

@@ -63,7 +63,7 @@ class AuthController extends Controller
             Auth::login($user);
 
             // 4. Redirect dengan success message
-            return redirect()->route('dashboard.consumer')
+            return redirect()->route('dashboard.customer')
                 ->with('success', 'Selamat datang, ' . $user->name . '! 🎉 Akunmu berhasil dibuat. Yuk, jelajahi platform pertanian kami!');
 
         } catch (ValidationException $e) {
@@ -204,12 +204,6 @@ class AuthController extends Controller
                 'password.required' => 'Password tidak boleh kosong.',
             ]);
 
-            // Debug: Log credentials (tanpa password)
-            \Log::info('Login attempt:', [
-                'email' => $credentials['email'],
-                'timestamp' => now()
-            ]);
-
             // 2. Cek user exists
             $user = User::where('email', $credentials['email'])->first();
 
@@ -223,27 +217,12 @@ class AuthController extends Controller
                     ->onlyInput('email');
             }
 
-            // Debug: Log user found
-            \Log::info('User found:', [
-                'user_id' => $user->id,
-                'user_role' => $user->role,
-                'user_status' => $user->status
-            ]);
-
             // 3. Attempt login
             if (Auth::attempt($credentials)) {
                 $request->session()->regenerate();
 
-                // Debug: Log successful login
-                \Log::info('Login successful:', [
-                    'user_id' => $user->id,
-                    'user_role' => $user->role
-                ]);
-
                 // Cek status petani
                 if ($user->isPetani()) {
-                    \Log::info('Farmer login attempt, status:', ['status' => $user->status]);
-
                     if (!$user->isActive()) {
                         // Simpan data user di session sebelum logout
                         $userData = [
@@ -255,14 +234,10 @@ class AuthController extends Controller
                         Auth::logout();
 
                         if ($user->isPending()) {
-                            \Log::info('Farmer login rejected - pending status');
-
                             return redirect()->route('verification.pending')
                                 ->with('user_data', $userData)
                                 ->with('info', 'Halo, ' . $user->name . '! Akun petani Anda masih dalam proses verifikasi. ⏳ Mohon tunggu 1x24 jam untuk konfirmasi dari admin.');
                         } elseif ($user->isRejected()) {
-                            \Log::info('Farmer login rejected - rejected status', ['reason' => $user->alasan_penolakan]);
-
                             return redirect()->route('verification.rejected')
                                 ->with('user_data', $userData)
                                 ->with('warning', 'Maaf, ' . $user->name . '. Akun petani Anda tidak disetujui. 😔 Alasan: ' . $user->alasan_penolakan);
@@ -281,11 +256,9 @@ class AuthController extends Controller
                     $redirectRoute = 'dashboard.farmer';
                     $welcomeMessage = 'Selamat datang kembali, Petani ' . $user->name . '! 🌾 Semoga panenmu melimpah hari ini!';
                 } else {
-                    $redirectRoute = 'dashboard.customer';
+                    $redirectRoute = 'dashboard.konsumen';
                     $welcomeMessage = 'Selamat datang kembali, ' . $user->name . '! 🛒 Yuk, lihat produk pertanian segar hari ini!';
                 }
-
-                \Log::info('Redirecting to:', ['route' => $redirectRoute]);
 
                 return redirect()->route($redirectRoute)
                     ->with('success', $welcomeMessage);

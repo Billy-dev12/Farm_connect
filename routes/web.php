@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ConsumerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// ====================
+// HALAMAN UTAMA
+// ====================
+
 // Halaman Utama (Welcome Page)
 Route::get('/', function () {
     return view('welcome');
@@ -26,77 +31,182 @@ Route::get('/', function () {
 // AUTHENTICATION ROUTES
 // ====================
 
-// Register Routes
-Route::get('/register/consumer', [AuthController::class, 'showConsumerRegister'])->name('register.consumer');
-Route::post('/register/consumer', [AuthController::class, 'registerConsumer'])->name('register.consumer.post');
-Route::get('/register/farmer', [AuthController::class, 'showFarmerRegister'])->name('register.farmer');
-Route::post('/register/farmer', [AuthController::class, 'registerFarmer'])->name('register.farmer.post');
+// Register Routes (untuk guest - belum login)
+Route::middleware(['guest'])->group(function () {
+    Route::get('/register/consumer', [AuthController::class, 'showConsumerRegister'])->name('registrasi.konsumen');
+    Route::post('/register/consumer', [AuthController::class, 'registerConsumer'])->name('register.consumer.post');
+    Route::get('/register/farmer', [AuthController::class, 'showFarmerRegister'])->name('register.farmer');
+    Route::post('/register/farmer', [AuthController::class, 'registerFarmer'])->name('register.farmer.post');
 
-// Login Routes
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    // Login Routes
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+});
 
-// Logout Route
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+// Logout Route (untuk yang sudah login)
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware(['auth']);
 
 // ====================
 // VERIFICATION ROUTES
 // ====================
 
-// Verification Pending (untuk petani yang belum diverifikasi)
-Route::get('/verification-pending', function () {
-    return view('auth.pending');
-})->name('verification.pending');
+// Verification Routes (untuk guest - belum login)
+Route::middleware(['guest'])->prefix('verification')->name('verification.')->group(function () {
+    Route::get('/pending', function () {
+        return view('auth.pending');
+    })->name('pending');
 
-// Verification Rejected (untuk petani yang ditolak)
-Route::get('/verification-rejected', function () {
-    return view('auth.rejected');
-})->name('verification.rejected');
+    Route::get('/rejected', function () {
+        return view('auth.rejected');
+    })->name('rejected');
+});
 
 // ====================
 // ADMIN ROUTES
 // ====================
 
 // Admin Routes dengan middleware auth dan admin
-// routes/web.php
-
-Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-    Route::post('/farmer/{farmer}/verify', [AdminController::class, 'verifyFarmer'])->name('verify.farmer');
-    Route::get('/farmer/{farmer}/download-proposal', [AdminController::class, 'downloadProposal'])->name('download-proposal');
-});
-
-// ====================
-// AUTHENTICATED ROUTES
-// ====================
-
-// Routes yang memerlukan authentication
-Route::middleware(['auth'])->group(function () {
-
-    // routes/web.php
-
-    // Dashboard Routes
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/dashboard/petani', [DashboardController::class, 'petani'])->name('dashboard.farmer');
-        Route::get('/dashboard/konsumen', [DashboardController::class, 'konsumen'])->name('dashboard.customer');
+Route::prefix('admin')
+    ->middleware(['auth', 'admin'])
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+        Route::post('/farmer/{farmer}/verify', [AdminController::class, 'verifyFarmer'])->name('verify.farmer');
+        Route::get('/farmer/{farmer}/download-proposal', [AdminController::class, 'downloadProposal'])->name('download-proposal');
     });
-    // Profile Routes   
-    Route::prefix('profile')->name('profile.')->group(function () {
+
+// ====================
+// DASHBOARD ROUTES
+// ====================
+
+// Dashboard Routes dengan middleware auth
+Route::prefix('dashboard')
+    ->middleware(['auth'])
+    ->name('dashboard.')
+    ->group(function () {
+        Route::get('/petani', [DashboardController::class, 'petani'])->name('petani');
+        Route::get('/konsumen', [DashboardController::class, 'konsumen'])->name('konsumen');
+    });
+
+// ====================
+// PROFILE ROUTES
+// ====================
+
+// Profile Routes dengan middleware auth
+Route::prefix('profile')
+    ->middleware(['auth'])
+    ->name('profile.')
+    ->group(function () {
         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
         Route::put('/update', [ProfileController::class, 'update'])->name('update');
     });
 
-    // Bisa tambahkan routes lain di sini
-    // Contoh:
-    // Route::get('/products', [ProductController::class, 'index'])->name('products.index');
-    // Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-});
+// ====================
+// KONSUMEN ROUTES
+// ====================
+
+// Konsumen Routes dengan middleware auth
+Route::prefix('konsumen')
+    ->middleware(['auth'])
+    ->name('konsumen.')
+    ->group(function () {
+        // Dashboard Konsumen
+        Route::get('/dashboard', [ConsumerController::class, 'dashboard'])->name('dashboard');
+
+        // Browse & Search Products
+        Route::get('/produk', [ConsumerController::class, 'browse'])->name('browse');
+        Route::get('/produk/search', [ConsumerController::class, 'search'])->name('search');
+
+        // Product Detail
+        Route::get('/produk/{id}', [ConsumerController::class, 'show'])->name('show');
+
+        // Wishlist
+        Route::get('/wishlist', [ConsumerController::class, 'wishlist'])->name('wishlist');
+        Route::post('/wishlist/{productId}', [ConsumerController::class, 'addToWishlist'])->name('wishlist.add');
+        Route::delete('/wishlist/{productId}', [ConsumerController::class, 'removeFromWishlist'])->name('wishlist.remove');
+
+        // Alamat Pengiriman
+        Route::get('/alamat', [ConsumerController::class, 'addresses'])->name('addresses');
+        Route::post('/alamat', [ConsumerController::class, 'storeAddress'])->name('addresses.store');
+        Route::put('/alamat/{id}', [ConsumerController::class, 'updateAddress'])->name('addresses.update');
+        Route::delete('/alamat/{id}', [ConsumerController::class, 'deleteAddress'])->name('addresses.delete');
+        Route::get('/alamat/get/{id}', [ConsumerController::class, 'getAddress'])->name('addresses.get');
+        Route::post('/alamat/{id}/set-default', [ConsumerController::class, 'setDefaultAddress'])->name('addresses.set-default');
+
+        // Riwayat Pembelian
+        Route::get('/riwayat', [ConsumerController::class, 'purchaseHistory'])->name('purchase.history');
+        Route::get('/riwayat/{id}', [ConsumerController::class, 'purchaseDetail'])->name('purchase.detail');
+
+        // Rating & Review
+        Route::get('/rating', [ConsumerController::class, 'ratings'])->name('ratings');
+        Route::post('/produk/{id}/rating', [ConsumerController::class, 'submitRating'])->name('rating.submit');
+    });
+
+// ====================
+// API ROUTES (Optional untuk future development)
+// ====================
+
+// API Routes untuk mobile app
+Route::prefix('api')
+    ->middleware(['auth:api', 'throttle'])
+    ->name('api.')
+    ->group(function () {
+        // API endpoints untuk mobile
+        Route::get('/products', [ConsumerController::class, 'apiProducts']);
+        Route::get('/products/{id}', [ConsumerController::class, 'apiProductDetail']);
+    });
 
 // ====================
 // FALLBACK ROUTE
 // ====================
 
-// Route untuk handle 404 (optional)
+// Route untuk handle 404 dengan smart redirect
 Route::fallback(function () {
+    if (request()->is('konsumen/*')) {
+        // Jika route dimulai dengan /konsumen tapi tidak ditemukan
+        return redirect()->route('konsumen.browse')->with('error', 'Halaman yang Anda cari tidak ditemukan.');
+    }
+
+    if (request()->is('dashboard/*')) {
+        // Jika route dimulai dengan /dashboard tapi tidak ditemukan
+        return redirect()->route('dashboard.konsumen')->with('error', 'Dashboard tidak ditemukan.');
+    }
+
+    // Default 404 page
     return response()->view('errors.404', [], 404);
 });
+
+// ====================
+// REDIRECT ROUTES (Optional - untuk kemudahan)
+// ====================
+
+// Redirect routes untuk kemudahan
+Route::get('/home', function () {
+    return redirect('/');
+});
+
+Route::get('/beranda', function () {
+    return redirect('/');
+});
+
+// ====================
+// DEBUG ROUTES (Hanya di development)
+// ====================
+
+if (config('app.debug')) {
+    Route::get('/debug/routes', function () {
+        $routes = Route::getRoutes();
+        $routeList = [];
+
+        foreach ($routes as $route) {
+            $routeList[] = [
+                'method' => implode('|', $route->methods()),
+                'uri' => $route->uri(),
+                'name' => $route->getName(),
+                'action' => $route->getActionName()
+            ];
+        }
+
+        return response()->json($routeList);
+    })->name('debug.routes');
+}

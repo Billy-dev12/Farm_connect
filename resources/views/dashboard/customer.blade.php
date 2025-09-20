@@ -126,7 +126,7 @@
             <i class="fas fa-shopping-basket"></i>
         </div>
 
-        <h1>Selamat Datang, {{ $user->name }}!</h1>
+        <h1>Selamat Datang, {{ Auth::user()->name }}!</h1>
         <p class="subtitle">Ayo belanja produk pertanian segar langsung dari petani lokal</p>
 
         @if (session('success'))
@@ -135,8 +135,14 @@
             </div>
         @endif
 
+        @if (session('error'))
+            <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+            </div>
+        @endif
+
         <div class="menu-grid">
-            <a href="#" class="menu-item">
+            <a href="{{ route('konsumen.browse') }}" class="menu-item">
                 <i class="fas fa-search"></i>
                 <span>Cari Produk</span>
             </a>
@@ -146,9 +152,19 @@
                 <span>Keranjang</span>
             </a>
 
-            <a href="#" class="menu-item">
+            <a href="{{ route('konsumen.purchase.history') }}" class="menu-item">
                 <i class="fas fa-list"></i>
                 <span>Pesanan Saya</span>
+            </a>
+
+            <a href="{{ route('konsumen.wishlist') }}" class="menu-item">
+                <i class="fas fa-heart"></i>
+                <span>Wishlist</span>
+            </a>
+
+            <a href="/konsumen/alamat" class="menu-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Alamat</span>
             </a>
 
             <a href="{{ route('profile.edit') }}" class="menu-item">
