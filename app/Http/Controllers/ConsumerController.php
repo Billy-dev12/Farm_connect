@@ -8,6 +8,7 @@ use App\Models\Address;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ConsumerController extends Controller
 {
@@ -69,7 +70,12 @@ class ConsumerController extends Controller
 
         // Pisahkan produk yang ada di wishlist dan yang tidak
         $user = Auth::user();
-        $wishlistProductIds = $user->wishlist()->pluck('dummy_product_id')->toArray();
+        $wishlistProductIds = [];
+
+        // Pastikan user dan wishlist ada sebelum mencoba mengaksesnya
+        if ($user && $user->wishlist) {
+            $wishlistProductIds = $user->wishlist()->pluck('dummy_product_id')->toArray();
+        }
 
         $wishlistProducts = $allProducts->filter(function ($product) use ($wishlistProductIds) {
             return in_array($product->id, $wishlistProductIds);
@@ -151,7 +157,12 @@ class ConsumerController extends Controller
 
         // Pisahkan produk yang ada di wishlist dan yang tidak
         $user = Auth::user();
-        $wishlistProductIds = $user->wishlist()->pluck('dummy_product_id')->toArray();
+        $wishlistProductIds = [];
+
+        // Pastikan user dan wishlist ada sebelum mencoba mengaksesnya
+        if ($user && $user->wishlist) {
+            $wishlistProductIds = $user->wishlist()->pluck('dummy_product_id')->toArray();
+        }
 
         $wishlistProducts = $allProducts->filter(function ($product) use ($wishlistProductIds) {
             return in_array($product->id, $wishlistProductIds);
@@ -245,6 +256,9 @@ class ConsumerController extends Controller
     public function storeAddress(Request $request)
     {
         try {
+            // Log request data
+            Log::info('Store address request:', $request->all());
+
             // Validasi input
             $validated = $request->validate([
                 'label' => 'required|string|max:255',
@@ -261,8 +275,11 @@ class ConsumerController extends Controller
             // Ambil user yang sedang login
             $user = Auth::user();
 
+            // Log user
+            Log::info('User ID:', ['user_id' => $user->id]);
+
             // Jika dijadikan default, set yang lain jadi false
-            if ($request->is_default) {
+            if (isset($validated['is_default']) && $validated['is_default']) {
                 $user->addresses()->update(['is_default' => false]);
             }
 
@@ -274,8 +291,14 @@ class ConsumerController extends Controller
             // Tambahkan user_id ke data yang akan disimpan
             $validated['user_id'] = $user->id;
 
+            // Log validated data
+            Log::info('Validated data:', $validated);
+
             // Buat alamat baru
             $address = $user->addresses()->create($validated);
+
+            // Log created address
+            Log::info('Created address:', $address->toArray());
 
             // Kembalikan response JSON untuk AJAX
             return response()->json([
@@ -285,12 +308,23 @@ class ConsumerController extends Controller
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+            // Log validation error
+            Log::error('Validation error:', ['errors' => $e->errors()->all()]);
+
             // Jika terjadi error validasi
             return response()->json([
                 'success' => false,
                 'message' => 'Validasi gagal: ' . implode(', ', $e->errors()->all())
             ], 422);
         } catch (\Exception $e) {
+            // Log general error
+            Log::error('Store address error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             // Jika terjadi error lainnya
             return response()->json([
                 'success' => false,
@@ -301,7 +335,7 @@ class ConsumerController extends Controller
 
     public function updateAddress(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'label' => 'required|string|max:255',
             'penerima' => 'required|string|max:255',
             'no_hp' => 'required|string|max:15',
@@ -317,11 +351,11 @@ class ConsumerController extends Controller
         $address = $user->addresses()->findOrFail($id);
 
         // Jika dijadikan default, set yang lain jadi false
-        if ($request->is_default) {
+        if (isset($validated['is_default']) && $validated['is_default']) {
             $user->addresses()->where('id', '!=', $id)->update(['is_default' => false]);
         }
 
-        $address->update($request->all());
+        $address->update($validated);
 
         return redirect()->route('konsumen.addresses')
             ->with('success', 'Alamat berhasil diperbarui!');

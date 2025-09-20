@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alamat Pengiriman - Sistem Pertanian</title>
-    <meta name="csrf-token" content="">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -214,6 +214,52 @@
             color: var(--text-primary);
         }
 
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            background-color: #10b981;
+        }
+
+        .toast.error {
+            background-color: #ef4444;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         /* Responsive Styles */
         @media (max-width: 768px) {
             .header {
@@ -252,24 +298,8 @@
             </div>
         </div>
 
-        <!-- Notification -->
-        @if (session('success'))
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded fade-in">
-                <div class="flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <p>{{ session('success') }}</p>
-                </div>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded fade-in">
-                <div class="flex items-center">
-                    <i class="fas fa-exclamation-circle mr-2"></i>
-                    <p>{{ session('error') }}</p>
-                </div>
-            </div>
-        @endif
+        <!-- Notification Toast -->
+        <div id="toast" class="toast"></div>
 
         <!-- Addresses Grid -->
         @if ($addresses->count() > 0)
@@ -292,15 +322,10 @@
                                         class="text-blue-500 hover:text-blue-700 transition-colors">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <form action="{{ route('konsumen.addresses.delete', $address->id) }}" method="POST"
-                                        onsubmit="return confirm('Apakah Anda yakin ingin menghapus alamat ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                            class="text-red-500 hover:text-red-700 transition-colors">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                                    <button onclick="confirmDelete({{ $address->id }})"
+                                        class="text-red-500 hover:text-red-700 transition-colors">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </div>
                             </div>
 
@@ -332,15 +357,11 @@
                             </div>
 
                             @if (!$address->is_default)
-                                <form action="{{ route('konsumen.addresses.set-default', $address->id) }}"
-                                    method="POST" class="mt-4">
-                                    @csrf
-                                    <button type="submit"
-                                        class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-lg transition-colors">
-                                        <i class="fas fa-star mr-2"></i>
-                                        Jadikan Alamat Utama
-                                    </button>
-                                </form>
+                                <button onclick="setDefaultAddress({{ $address->id }})"
+                                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded-lg transition-colors">
+                                    <i class="fas fa-star mr-2"></i>
+                                    Jadikan Alamat Utama
+                                </button>
                             @endif
                         </div>
                     </div>
@@ -441,16 +462,51 @@
                             class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
                             Batal
                         </button>
-                        <button type="submit" class="btn-primary text-white px-6 py-3 rounded-lg font-medium">
+                        <button type="submit" id="submitBtn"
+                            class="btn-primary text-white px-6 py-3 rounded-lg font-medium">
                             Simpan Alamat
                         </button>
                     </div>
                 </form>
             </div>
         </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="p-6 border-b">
+                    <h2 class="text-2xl font-bold text-gray-800">Konfirmasi Hapus</h2>
+                </div>
+                <div class="p-6">
+                    <p class="mb-6">Apakah Anda yakin ingin menghapus alamat ini? Tindakan ini tidak dapat
+                        dibatalkan.</p>
+                    <div class="flex justify-end gap-3">
+                        <button onclick="closeDeleteModal()"
+                            class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                            Batal
+                        </button>
+                        <button id="confirmDeleteBtn" class="btn-danger text-white px-6 py-3 rounded-lg font-medium">
+                            Hapus
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
         // Modal functions
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'Tambah Alamat Baru';
@@ -463,7 +519,7 @@
 
         function openEditModal(id) {
             // Fetch address data via AJAX
-            fetch(`/konsumen/alamat/get/${id}`)
+            fetch(`{{ route('konsumen.addresses.get', ['id' => ':id']) }}`.replace(':id', id))
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -472,7 +528,8 @@
                 })
                 .then(data => {
                     document.getElementById('modalTitle').textContent = 'Edit Alamat';
-                    document.getElementById('addressForm').action = `/konsumen/alamat/${id}`;
+                    document.getElementById('addressForm').action =
+                        `{{ route('konsumen.addresses.update', ['id' => ':id']) }}`.replace(':id', id);
                     document.getElementById('formMethod').value = "PUT";
                     document.getElementById('addressId').value = data.id;
 
@@ -491,7 +548,7 @@
                 })
                 .catch(error => {
                     console.error('Error fetching address data:', error);
-                    alert('Gagal memuat data alamat. Silakan coba lagi.');
+                    showToast('Gagal memuat data alamat. Silakan coba lagi.', 'error');
                 });
         }
 
@@ -499,11 +556,36 @@
             document.getElementById('addressModal').classList.remove('active');
         }
 
+        // Delete modal functions
+        let deleteId = null;
+
+        function confirmDelete(id) {
+            deleteId = id;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            deleteId = null;
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            if (deleteId) {
+                deleteAddress(deleteId);
+            }
+        });
+
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('addressModal');
-            if (event.target == modal) {
+            const addressModal = document.getElementById('addressModal');
+            const deleteModal = document.getElementById('deleteModal');
+
+            if (event.target == addressModal) {
                 closeModal();
+            }
+
+            if (event.target == deleteModal) {
+                closeDeleteModal();
             }
         }
 
@@ -511,24 +593,16 @@
         document.getElementById('addressForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalButtonText = submitButton.innerHTML;
+            const submitBtn = document.getElementById('submitBtn');
+            const originalBtnText = submitBtn.innerHTML;
 
             // Disable button and show loading state
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner mr-2"></span>Menyimpan...';
 
             const formData = new FormData(this);
             const url = this.action;
             const method = document.getElementById('formMethod').value;
-
-            // Debug: Log data yang akan dikirim
-            console.log('Submitting form to:', url);
-            console.log('Method:', method);
-            console.log('Form data:');
-            for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + pair[1]);
-            }
 
             fetch(url, {
                     method: method,
@@ -539,46 +613,99 @@
                     }
                 })
                 .then(response => {
-                    console.log('Response status:', response.status);
-
                     if (response.redirected) {
                         window.location.href = response.url;
                         return;
                     }
 
                     if (!response.ok) {
-                        throw new Error('Network response was not ok: ' + response.statusText);
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Network response was not ok');
+                        });
                     }
 
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Response data:', data);
-
                     if (data && data.success) {
-                        alert(data.message);
-                        window.location.reload();
+                        showToast(data.message || 'Alamat berhasil disimpan');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
                     } else {
-                        // Show error message if available
-                        const errorMessage = data.message || 'Terjadi kesalahan. Silakan coba lagi.';
-                        alert(errorMessage);
-
-                        // Re-enable button
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = originalButtonText;
+                        showToast(data.message || 'Terjadi kesalahan. Silakan coba lagi.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-
-                    // Show error message
-                    alert('Terjadi kesalahan: ' + error.message);
-
-                    // Re-enable button
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = originalButtonText;
+                    showToast('Terjadi kesalahan: ' + error.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
                 });
         });
+
+        // Set default address function
+        function setDefaultAddress(id) {
+            const url = `{{ route('konsumen.addresses.set-default', ['id' => ':id']) }}`.replace(':id', id);
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showToast('Alamat utama berhasil diperbarui');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Terjadi kesalahan: ' + error.message, 'error');
+                });
+        }
+
+        // Delete address function
+        function deleteAddress(id) {
+            const url = `{{ route('konsumen.addresses.delete', ['id' => ':id']) }}`.replace(':id', id);
+
+            fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    closeDeleteModal();
+                    showToast('Alamat berhasil dihapus');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Terjadi kesalahan: ' + error.message, 'error');
+                });
+        }
     </script>
 </body>
 
