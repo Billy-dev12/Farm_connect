@@ -26,6 +26,8 @@
             --text-primary: #333333;
             --text-secondary: #666666;
             --border: #e5e7eb;
+            --error: #ef4444;
+            --success: #10b981;
         }
 
         * {
@@ -65,12 +67,39 @@
             }
         }
 
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+                transform: translateX(-5px);
+            }
+
+            20%,
+            40%,
+            60%,
+            80% {
+                transform: translateX(5px);
+            }
+        }
+
         .fade-in {
             animation: fadeIn 0.5s ease-out forwards;
         }
 
         .scale-in {
             animation: scaleIn 0.3s ease-out forwards;
+        }
+
+        .shake {
+            animation: shake 0.5s ease-in-out;
         }
 
         /* Card Styles */
@@ -207,11 +236,34 @@
             box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.2);
         }
 
+        .form-control.error {
+            border-color: var(--error);
+            animation: shake 0.5s ease-in-out;
+        }
+
         .form-label {
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
             color: var(--text-primary);
+        }
+
+        .form-hint {
+            display: block;
+            margin-top: 5px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .form-error {
+            display: none;
+            margin-top: 5px;
+            font-size: 13px;
+            color: var(--error);
+        }
+
+        .form-error.show {
+            display: block;
         }
 
         /* Toast Notification */
@@ -236,11 +288,11 @@
         }
 
         .toast.success {
-            background-color: #10b981;
+            background-color: var(--success);
         }
 
         .toast.error {
-            background-color: #ef4444;
+            background-color: var(--error);
         }
 
         /* Loading Spinner */
@@ -387,67 +439,93 @@
                 <div class="p-6 border-b">
                     <div class="flex justify-between items-center">
                         <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Tambah Alamat Baru</h2>
-                        <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                        <!-- Tombol Tutup (X) -->
+                        <button onclick="closeModalById('addressModal')" class="text-gray-500 hover:text-gray-700">
                             <i class="fas fa-times text-xl"></i>
                         </button>
+
                     </div>
                 </div>
 
-                <form id="addressForm" action="{{ route('konsumen.addresses.store') }}" method="POST">
+                <form id="addressForm" action="{{ route('konsumen.addresses.store') }}" method="POST" novalidate>
                     @csrf
                     <input type="hidden" id="addressId" name="address_id" value="">
                     <input type="hidden" id="formMethod" name="_method" value="POST">
 
                     <div class="p-6">
                         <div class="form-group">
-                            <label class="form-label" for="label">Label Alamat</label>
+                            <label class="form-label" for="label">Label Alamat <span
+                                    class="text-red-500">*</span></label>
                             <input type="text" id="label" name="label" class="form-control"
                                 placeholder="Rumah, Kantor, dll." required>
+                            <span class="form-hint">Contoh: Rumah, Kantor, Apartemen</span>
+                            <div class="form-error" id="label-error"></div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="penerima">Nama Penerima</label>
+                            <label class="form-label" for="penerima">Nama Penerima <span
+                                    class="text-red-500">*</span></label>
                             <input type="text" id="penerima" name="penerima" class="form-control"
                                 placeholder="Nama penerima paket" required>
+                            <span class="form-hint">Masukkan nama lengkap penerima paket</span>
+                            <div class="form-error" id="penerima-error"></div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="no_hp">Nomor HP</label>
-                            <input type="text" id="no_hp" name="no_hp" class="form-control"
+                            <label class="form-label" for="no_hp">Nomor HP <span
+                                    class="text-red-500">*</span></label>
+                            <input type="tel" id="no_hp" name="no_hp" class="form-control"
                                 placeholder="08xxxxxxxxxx" required>
+                            <span class="form-hint">Contoh: 081234567890 (minimal 10 digit, hanya angka)</span>
+                            <div class="form-error" id="no_hp-error"></div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="alamat_lengkap">Alamat Lengkap</label>
+                            <label class="form-label" for="alamat_lengkap">Alamat Lengkap <span
+                                    class="text-red-500">*</span></label>
                             <textarea id="alamat_lengkap" name="alamat_lengkap" class="form-control" rows="3"
                                 placeholder="Jalan, nomor rumah, RT/RW" required></textarea>
+                            <span class="form-hint">Masukkan alamat lengkap termasuk jalan, nomor rumah, RT/RW</span>
+                            <div class="form-error" id="alamat_lengkap-error"></div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="form-group">
-                                <label class="form-label" for="provinsi">Provinsi</label>
+                                <label class="form-label" for="provinsi">Provinsi <span
+                                        class="text-red-500">*</span></label>
                                 <input type="text" id="provinsi" name="provinsi" class="form-control"
                                     placeholder="Provinsi" required>
+                                <span class="form-hint">Contoh: Jawa Barat, DKI Jakarta</span>
+                                <div class="form-error" id="provinsi-error"></div>
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label" for="kota">Kota/Kabupaten</label>
+                                <label class="form-label" for="kota">Kota/Kabupaten <span
+                                        class="text-red-500">*</span></label>
                                 <input type="text" id="kota" name="kota" class="form-control"
                                     placeholder="Kota atau kabupaten" required>
+                                <span class="form-hint">Contoh: Bandung, Jakarta Selatan</span>
+                                <div class="form-error" id="kota-error"></div>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="form-group">
-                                <label class="form-label" for="kecamatan">Kecamatan</label>
+                                <label class="form-label" for="kecamatan">Kecamatan <span
+                                        class="text-red-500">*</span></label>
                                 <input type="text" id="kecamatan" name="kecamatan" class="form-control"
                                     placeholder="Kecamatan" required>
+                                <span class="form-hint">Contoh: Coblong, Menteng</span>
+                                <div class="form-error" id="kecamatan-error"></div>
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label" for="kode_pos">Kode Pos</label>
+                                <label class="form-label" for="kode_pos">Kode Pos <span
+                                        class="text-red-500">*</span></label>
                                 <input type="text" id="kode_pos" name="kode_pos" class="form-control"
                                     placeholder="Kode pos" required>
+                                <span class="form-hint">5 digit angka (contoh: 40132)</span>
+                                <div class="form-error" id="kode_pos-error"></div>
                             </div>
                         </div>
 
@@ -458,10 +536,12 @@
                     </div>
 
                     <div class="p-6 border-t bg-gray-50 flex justify-end gap-3">
-                        <button type="button" onclick="closeModal()"
+                        <button type="button" onclick="closeModalById('addressModal')"
                             class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
                             Batal
                         </button>
+
+
                         <button type="submit" id="submitBtn"
                             class="btn-primary text-white px-6 py-3 rounded-lg font-medium">
                             Simpan Alamat
@@ -495,218 +575,455 @@
     </div>
 
     <script>
-        // Toast notification function
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast ' + type;
-            toast.classList.add('show');
+        document.addEventListener('DOMContentLoaded', () => {
+            // Constants / Selectors
+            const toastEl = document.getElementById('toast');
+            const addressModalEl = document.getElementById('addressModal');
+            const deleteModalEl = document.getElementById('deleteModal');
+            const addressFormEl = document.getElementById('addressForm');
+            const submitBtnEl = document.getElementById('submitBtn');
+            const confirmDeleteBtnEl = document.getElementById('confirmDeleteBtn');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
+            let deleteId = null;
 
-        // Modal functions
-        function openAddModal() {
-            document.getElementById('modalTitle').textContent = 'Tambah Alamat Baru';
-            document.getElementById('addressForm').action = "{{ route('konsumen.addresses.store') }}";
-            document.getElementById('formMethod').value = "POST";
-            document.getElementById('addressId').value = "";
-            document.getElementById('addressForm').reset();
-            document.getElementById('addressModal').classList.add('active');
-        }
+            // ========== Toast Notification ==========
+            function showToast(message, type = 'success') {
+                const prefix = {
+                    success: '✅ ',
+                    error: '❌ ',
+                    info: 'ℹ️ ',
+                    warning: '⚠️ '
+                } [type] || '';
 
-        function openEditModal(id) {
-            // Fetch address data via AJAX
-            fetch(`{{ route('konsumen.addresses.get', ['id' => ':id']) }}`.replace(':id', id))
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
+                toastEl.textContent = prefix + message;
+                toastEl.className = `toast ${type} show`;
+
+                // Bisa tambahkan animasi fade in/out via CSS
+                setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, 3000);
+            }
+
+            // ========== Modal Helpers ==========
+            function openAddModal() {
+                setModalTitle('Tambah Alamat Baru');
+                addressFormEl.action = "{{ route('konsumen.addresses.store') }}";
+                setFormMethod('POST');
+                setAddressFormValues({}); // reset
+                clearFormErrors();
+                showModal(addressModalEl);
+            }
+
+            function openEditModal(id) {
+                setModalTitle('Edit Alamat');
+                showToast('Memuat data alamat...', 'info');
+
+                const getUrl = `{{ route('konsumen.addresses.get', ['id' => ':id']) }}`.replace(':id', id);
+                fetch(getUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Gagal menghubungi server');
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Set action URL for update
+                        const updateUrl = `{{ route('konsumen.addresses.update', ['id' => ':id']) }}`.replace(
+                            ':id', id);
+                        addressFormEl.action = updateUrl;
+                        setFormMethod('PUT');
+
+                        // Fill form fields
+                        setAddressFormValues(data);
+
+                        clearFormErrors();
+                        showModal(addressModalEl);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching address data:', error);
+                        showToast('Tidak dapat memuat alamat. Silakan coba lagi nanti.', 'error');
+                    });
+            }
+
+            function closeModalById(id) {
+                const modalEl = document.getElementById(id);
+                if (modalEl) {
+                    modalEl.classList.remove('active');
+                }
+            }
+            window.closeModalById = closeModalById;
+
+
+            function closeModal(modalEl) {
+                modalEl.classList.remove('active');
+            }
+
+            function showModal(modalEl) {
+                modalEl.classList.add('active');
+            }
+
+            function setModalTitle(titleText) {
+                document.getElementById('modalTitle').textContent = titleText;
+            }
+
+            function setFormMethod(method) {
+                document.getElementById('formMethod').value = method.toUpperCase(); // 'POST' atau 'PUT'
+            }
+
+            function setAddressFormValues(data = {}) {
+                // data bisa kosong objek, maka fallback ke ''
+                document.getElementById('addressId').value = data.id || '';
+                document.getElementById('label').value = data.label || '';
+                document.getElementById('penerima').value = data.penerima || '';
+                document.getElementById('no_hp').value = data.no_hp || '';
+                document.getElementById('alamat_lengkap').value = data.alamat_lengkap || '';
+                document.getElementById('provinsi').value = data.provinsi || '';
+                document.getElementById('kota').value = data.kota || '';
+                document.getElementById('kecamatan').value = data.kecamatan || '';
+                document.getElementById('kode_pos').value = data.kode_pos || '';
+                document.getElementById('is_default').checked = data.is_default || false;
+            }
+
+            // ========== Delete Modal ==========
+            function confirmDelete(id) {
+                deleteId = id;
+                showModal(deleteModalEl);
+            }
+
+            function closeDeleteModal() {
+                deleteId = null;
+                closeModal(deleteModalEl);
+            }
+
+            confirmDeleteBtnEl.addEventListener('click', () => {
+                if (deleteId) {
+                    deleteAddress(deleteId);
+                }
+            });
+
+            // Close modals when click outside
+            window.addEventListener('click', (event) => {
+                if (event.target === addressModalEl) {
+                    closeModal(addressModalEl);
+                }
+                if (event.target === deleteModalEl) {
+                    closeDeleteModal();
+                }
+            });
+
+            // ========== Form Validation ==========
+            const validationRules = {
+                label: {
+                    required: true,
+                    minLength: 2,
+                    messages: {
+                        required: 'Label alamat tidak boleh kosong.',
+                        minLength: 'Label alamat minimal 2 karakter.'
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    document.getElementById('modalTitle').textContent = 'Edit Alamat';
-                    document.getElementById('addressForm').action =
-                        `{{ route('konsumen.addresses.update', ['id' => ':id']) }}`.replace(':id', id);
-                    document.getElementById('formMethod').value = "PUT";
-                    document.getElementById('addressId').value = data.id;
+                },
+                penerima: {
+                    required: true,
+                    minLength: 3,
+                    messages: {
+                        required: 'Nama penerima tidak boleh kosong.',
+                        minLength: 'Nama penerima minimal 3 karakter.'
+                    }
+                },
+                no_hp: {
+                    required: true,
+                    pattern: /^[0-9]{10,15}$/,
+                    messages: {
+                        required: 'Nomor HP tidak boleh kosong.',
+                        pattern: 'Nomor HP harus berupa 10‑15 digit angka.'
+                    }
+                },
+                alamat_lengkap: {
+                    required: true,
+                    minLength: 10,
+                    messages: {
+                        required: 'Alamat lengkap tidak boleh kosong.',
+                        minLength: 'Alamat lengkap minimal 10 karakter.'
+                    }
+                },
+                provinsi: {
+                    required: true,
+                    messages: {
+                        required: 'Provinsi tidak boleh kosong.'
+                    }
+                },
+                kota: {
+                    required: true,
+                    messages: {
+                        required: 'Kota/Kabupaten tidak boleh kosong.'
+                    }
+                },
+                kecamatan: {
+                    required: true,
+                    messages: {
+                        required: 'Kecamatan tidak boleh kosong.'
+                    }
+                },
+                kode_pos: {
+                    required: true,
+                    pattern: /^[0-9]{5}$/,
+                    messages: {
+                        required: 'Kode pos tidak boleh kosong.',
+                        pattern: 'Kode pos harus 5 digit angka.'
+                    }
+                }
+            };
 
-                    // Fill form with data
-                    document.getElementById('label').value = data.label;
-                    document.getElementById('penerima').value = data.penerima;
-                    document.getElementById('no_hp').value = data.no_hp;
-                    document.getElementById('alamat_lengkap').value = data.alamat_lengkap;
-                    document.getElementById('provinsi').value = data.provinsi;
-                    document.getElementById('kota').value = data.kota;
-                    document.getElementById('kecamatan').value = data.kecamatan;
-                    document.getElementById('kode_pos').value = data.kode_pos;
-                    document.getElementById('is_default').checked = data.is_default;
+            function validateField(fieldName) {
+                const rule = validationRules[fieldName];
+                const fieldEl = document.getElementById(fieldName);
+                const errorEl = document.getElementById(`${fieldName}-error`);
+                let value = fieldEl.value.trim();
+                let isValid = true;
+                let message = '';
 
-                    document.getElementById('addressModal').classList.add('active');
-                })
-                .catch(error => {
-                    console.error('Error fetching address data:', error);
-                    showToast('Gagal memuat data alamat. Silakan coba lagi.', 'error');
+                if (rule.required && !value) {
+                    isValid = false;
+                    message = rule.messages.required;
+                } else if (rule.minLength && value.length < rule.minLength) {
+                    isValid = false;
+                    message = rule.messages.minLength;
+                } else if (rule.pattern && !rule.pattern.test(value)) {
+                    isValid = false;
+                    message = rule.messages.pattern;
+                }
+
+                if (!isValid) {
+                    showFieldError(fieldEl, errorEl, message);
+                } else {
+                    hideFieldError(fieldEl, errorEl);
+                }
+
+                return isValid;
+            }
+
+            function validateForm() {
+                let allValid = true;
+                Object.keys(validationRules).forEach(fieldName => {
+                    const valid = validateField(fieldName);
+                    if (!valid) allValid = false;
                 });
-        }
-
-        function closeModal() {
-            document.getElementById('addressModal').classList.remove('active');
-        }
-
-        // Delete modal functions
-        let deleteId = null;
-
-        function confirmDelete(id) {
-            deleteId = id;
-            document.getElementById('deleteModal').classList.add('active');
-        }
-
-        function closeDeleteModal() {
-            deleteId = null;
-            document.getElementById('deleteModal').classList.remove('active');
-        }
-
-        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-            if (deleteId) {
-                deleteAddress(deleteId);
-            }
-        });
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const addressModal = document.getElementById('addressModal');
-            const deleteModal = document.getElementById('deleteModal');
-
-            if (event.target == addressModal) {
-                closeModal();
+                return allValid;
             }
 
-            if (event.target == deleteModal) {
-                closeDeleteModal();
+            function showFieldError(fieldEl, errorEl, message) {
+                fieldEl.classList.add('error');
+                errorEl.textContent = message;
+                errorEl.classList.add('show');
             }
-        }
 
-        // Form submission handler
-        document.getElementById('addressForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+            function hideFieldError(fieldEl, errorEl) {
+                fieldEl.classList.remove('error');
+                errorEl.classList.remove('show');
+            }
 
-            const submitBtn = document.getElementById('submitBtn');
-            const originalBtnText = submitBtn.innerHTML;
+            function clearFormErrors() {
+                Object.keys(validationRules).forEach(fieldName => {
+                    const fieldEl = document.getElementById(fieldName);
+                    const errorEl = document.getElementById(`${fieldName}-error`);
+                    hideFieldError(fieldEl, errorEl);
+                });
+            }
 
-            // Disable button and show loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner mr-2"></span>Menyimpan...';
+            // Real‐time validation on blur & input
+            Object.keys(validationRules).forEach(fieldName => {
+                const fieldEl = document.getElementById(fieldName);
+                if (!fieldEl) return;
+                const errorEl = document.getElementById(`${fieldName}-error`);
 
-            const formData = new FormData(this);
-            const url = this.action;
-            const method = document.getElementById('formMethod').value;
-
-            fetch(url, {
-                    method: method,
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                            'content')
+                fieldEl.addEventListener('blur', () => validateField(fieldName));
+                fieldEl.addEventListener('input', () => {
+                    if (fieldEl.classList.contains('error')) {
+                        validateField(fieldName);
                     }
-                })
-                .then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                        return;
-                    }
+                });
+            });
 
-                    if (!response.ok) {
-                        return response.json().then(data => {
-                            throw new Error(data.message || 'Network response was not ok');
-                        });
-                    }
+            // ========== Form Submission ==========
+            addressFormEl.addEventListener('submit', (e) => {
+                e.preventDefault();
 
-                    return response.json();
-                })
-                .then(data => {
-                    if (data && data.success) {
-                        showToast(data.message || 'Alamat berhasil disimpan');
+                if (!validateForm()) {
+                    showToast('Form belum lengkap. Silakan diperiksa kembali.', 'error');
+                    return;
+                }
+
+                const originalBtnHtml = submitBtnEl.innerHTML;
+                disableButtonWithSpinner(submitBtnEl, 'Menyimpan');
+
+                const formData = new FormData(addressFormEl);
+                const method = document.getElementById('formMethod').value.toUpperCase();
+                const url = addressFormEl.action;
+
+                if (method === 'PUT') {
+                    formData.append('_method', 'PUT');
+                }
+
+                fetch(url, {
+                        method: 'POST', // Laravel expects POST + _method override
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: formData
+                    })
+                    .then(async (response) => {
+                        if (!response.ok) {
+                            const text = await response.text();
+                            try {
+                                const json = JSON.parse(text);
+                                const error = new Error(json.message || 'Terjadi kesalahan server');
+                                error.errors = json.errors || {};
+                                throw error;
+                            } catch (errParse) {
+                                throw new Error(
+                                    'Terjadi kesalahan yang tidak terduga. Silakan coba lagi.');
+                            }
+                        }
+                        const contentType = response.headers.get('content-type') || '';
+                        if (!contentType.includes('application/json')) {
+                            throw new Error('Respon dari server tidak valid.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data && data.success) {
+                            showToast(data.message || 'Alamat berhasil disimpan.', 'success');
+                            closeModal(addressModalEl);
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1200);
+                        } else {
+                            showToast(data.message || 'Gagal menyimpan data. Silakan coba lagi.',
+                                'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        if (error.errors) {
+                            // Tampilkan validasi dari server
+                            for (const [field, msgs] of Object.entries(error.errors)) {
+                                const fieldEl = document.getElementById(field);
+                                const errorEl = document.getElementById(`${field}-error`);
+                                if (fieldEl && errorEl && Array.isArray(msgs)) {
+                                    showFieldError(fieldEl, errorEl, msgs[0]);
+                                }
+                            }
+                            showToast('Periksa kembali data yang diisi.', 'warning');
+                        } else {
+                            showToast(error.message || 'Terjadi kesalahan. Silakan coba lagi nanti.',
+                                'error');
+                        }
+                    })
+                    .finally(() => {
+                        restoreButton(submitBtnEl, originalBtnHtml);
+                    });
+            });
+
+            // ========== Set Default Address ==========
+            function setDefaultAddress(id) {
+                const url = `{{ route('konsumen.addresses.set-default', ['id' => ':id']) }}`.replace(':id', id);
+                disableButtonWithSpinner(document.getElementById(`defaultBtn-${id}`), 'Mengatur');
+
+                fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(json => {
+                                throw new Error(json.message || 'Gagal mengatur alamat utama.');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        showToast(data.message || 'Alamat utama berhasil diperbarui.', 'success');
                         setTimeout(() => {
                             window.location.reload();
                         }, 1000);
-                    } else {
-                        showToast(data.message || 'Terjadi kesalahan. Silakan coba lagi.', 'error');
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = originalBtnText;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Terjadi kesalahan: ' + error.message, 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalBtnText;
-                });
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        showToast(error.message || 'Gagal mengatur alamat utama. Silakan coba lagi.', 'error');
+                    })
+                    .finally(() => {
+                        restoreButton(document.getElementById(`defaultBtn-${id}`), 'Jadikan Utama');
+                    });
+            }
+
+            // ========== Delete Address ==========
+            function deleteAddress(id) {
+                const url = `{{ route('konsumen.addresses.delete', ['id' => ':id']) }}`.replace(':id', id);
+                disableButtonWithSpinner(confirmDeleteBtnEl, 'Menghapus');
+
+                fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(json => {
+                                throw new Error(json.message || 'Gagal menghapus alamat.');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        closeDeleteModal();
+                        showToast(data.message || 'Alamat berhasil dihapus.', 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        showToast(error.message || 'Gagal menghapus alamat. Silakan coba lagi.', 'error');
+                    })
+                    .finally(() => {
+                        restoreButton(confirmDeleteBtnEl, 'Ya, Hapus');
+                    });
+            }
+
+            // ========== Util Functions ==========
+            function disableButtonWithSpinner(buttonEl, actionText = 'Memproses') {
+                if (!buttonEl) return;
+                buttonEl.disabled = true;
+                buttonEl.dataset.origText = buttonEl.innerHTML;
+                buttonEl.innerHTML = `<span class="spinner mr-2"></span>${actionText}...`;
+            }
+
+            function restoreButton(buttonEl, text) {
+                if (!buttonEl) return;
+                buttonEl.disabled = false;
+                buttonEl.innerHTML = text;
+            }
+
+            // Exposure to global (optional, jika kamu panggil dari HTML inline)
+            window.openAddModal = openAddModal;
+            window.openEditModal = openEditModal;
+            window.confirmDelete = confirmDelete;
+            window.setDefaultAddress = setDefaultAddress;
         });
-
-        // Set default address function
-        function setDefaultAddress(id) {
-            const url = `{{ route('konsumen.addresses.set-default', ['id' => ':id']) }}`.replace(':id', id);
-
-            fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    showToast('Alamat utama berhasil diperbarui');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Terjadi kesalahan: ' + error.message, 'error');
-                });
-        }
-
-        // Delete address function
-        function deleteAddress(id) {
-            const url = `{{ route('konsumen.addresses.delete', ['id' => ':id']) }}`.replace(':id', id);
-
-            fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    closeDeleteModal();
-                    showToast('Alamat berhasil dihapus');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Terjadi kesalahan: ' + error.message, 'error');
-                });
-        }
     </script>
+
+
 </body>
 
 </html>

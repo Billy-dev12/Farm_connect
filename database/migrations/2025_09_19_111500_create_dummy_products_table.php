@@ -8,21 +8,23 @@ return new class extends Migration {
     /**
      * Run the migrations.
      */
-    // database/migrations/xxxx_create_dummy_products_table.php
     public function up(): void
     {
-        Schema::create('dummy_products', function (Blueprint $table) {
+        Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('nama_produk');
-            $table->text('deskripsi');
+            $table->text('deskripsi')->nullable();
             $table->string('kategori');
             $table->string('lokasi');
             $table->integer('harga');
             $table->integer('stok');
             $table->string('satuan');
             $table->string('gambar')->nullable();
-            $table->integer('farmer_id');
+            $table->unsignedBigInteger('farmer_id'); // pakai unsigned
             $table->timestamps();
+
+            // kalau nanti ada relasi ke tabel users/petani
+            // $table->foreign('farmer_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
@@ -31,6 +33,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('dummy_products');
+        Schema::dropIfExists('products'); // sesuai nama tabel
     }
 };

@@ -299,11 +299,28 @@
                     <i class="fas fa-store text-green-700 mr-3"></i>
                     <span>Toko Pertanian</span>
                 </h1>
-                <a href="{{ route('konsumen.dashboard') }}"
-                    class="back-btn btn-primary text-white px-6 py-3 rounded-full flex items-center mt-4 md:mt-0">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    <span>Kembali ke Dashboard</span>
-                </a>
+                <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                    <!-- Cart Icon -->
+                    <a href="{{ route('konsumen.cart.index') }}"
+                        class="relative btn-primary text-white px-6 py-3 rounded-full flex items-center">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        <span>Keranjang</span>
+                        @php
+                            $cartCount = Auth::user()->carts()->count();
+                        @endphp
+                        @if ($cartCount > 0)
+                            <span
+                                class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                                {{ $cartCount }}
+                            </span>
+                        @endif
+                    </a>
+                    <a href="{{ route('konsumen.dashboard') }}"
+                        class="back-btn text-gray-700 px-6 py-3 rounded-full flex items-center border border-gray-300">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -505,35 +522,48 @@
                                         Rp {{ number_format($product->harga, 0, ',', '.') }}/{{ $product->satuan }}
                                     </div>
 
-                                    <div class="product-actions flex justify-between items-center">
-                                        <a href="{{ route('konsumen.show', $product->id) }}"
-                                            class="btn-primary text-white px-5 py-2.5 rounded-lg font-medium flex items-center">
-                                            <i class="fas fa-eye mr-2"></i>
-                                            <span>Detail</span>
-                                        </a>
+                                    <div class="product-actions flex flex-col gap-2">
+                                        <div class="flex justify-between items-center">
+                                            <a href="{{ route('konsumen.show', $product->id) }}"
+                                                class="btn-primary text-white px-5 py-2.5 rounded-lg font-medium flex items-center">
+                                                <i class="fas fa-eye mr-2"></i>
+                                                <span>Detail</span>
+                                            </a>
 
-                                        @if (Auth::user()->wishlist()->where('dummy_product_id', $product->id)->exists())
-                                            <!-- Jika sudah di wishlist, tombol untuk menghapus -->
-                                            <form action="{{ route('konsumen.wishlist.remove', $product->id) }}"
-                                                method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn-wishlist active text-2xl"
-                                                    title="Hapus dari Wishlist">
-                                                    <i class="fas fa-heart"></i>
-                                                </button>
-                                            </form>
-                                        @else
-                                            <!-- Jika belum di wishlist, tombol untuk menambahkan -->
-                                            <form action="{{ route('konsumen.wishlist.add', $product->id) }}"
-                                                method="POST">
-                                                @csrf
-                                                <button type="submit" class="btn-wishlist text-2xl text-gray-400"
-                                                    title="Tambah ke Wishlist">
-                                                    <i class="far fa-heart"></i>
-                                                </button>
-                                            </form>
-                                        @endif
+                                            @if (Auth::user()->wishlist()->where('dummy_product_id', $product->id)->exists())
+                                                <!-- Jika sudah di wishlist, tombol untuk menghapus -->
+                                                <form action="{{ route('konsumen.wishlist.remove', $product->id) }}"
+                                                    method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn-wishlist active text-2xl"
+                                                        title="Hapus dari Wishlist">
+                                                        <i class="fas fa-heart"></i>
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <!-- Jika belum di wishlist, tombol untuk menambahkan -->
+                                                <form action="{{ route('konsumen.wishlist.add', $product->id) }}"
+                                                    method="POST">
+                                                    @csrf
+                                                    <button type="submit" class="btn-wishlist text-2xl text-gray-400"
+                                                        title="Tambah ke Wishlist">
+                                                        <i class="far fa-heart"></i>
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
+
+                                        <!-- Tombol tambah ke keranjang -->
+                                        <form action="{{ route('konsumen.cart.add', $product->id) }}" method="POST"
+                                            class="add-to-cart-form">
+                                            @csrf
+                                            <button type="submit"
+                                                class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-medium flex items-center justify-center">
+                                                <i class="fas fa-shopping-cart mr-2"></i>
+                                                <span>Tambah ke Keranjang</span>
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -559,46 +589,100 @@
     </div>
 
     <script>
-        // Add animation to product cards when they come into view
-        const observerOptions = {
-            root: null,
-            rootMargin: '0px',
-            threshold: 0.1
-        };
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle add to cart form submission with AJAX
+            document.querySelectorAll('.add-to-cart-form').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('fade-in');
-                }
+                    const action = this.getAttribute('action');
+                    const button = this.querySelector('button');
+                    const originalText = button.innerHTML;
+
+                    // Show loading state
+                    button.innerHTML =
+                        '<i class="fas fa-spinner fa-spin mr-2"></i><span>Memproses...</span>';
+                    button.disabled = true;
+
+                    fetch(action, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({})
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Show success notification
+                                showNotification(data.message);
+
+                                // Update cart count if available
+                                if (data.cart_count !== undefined) {
+                                    const cartCountElements = document.querySelectorAll(
+                                        '.cart-count');
+                                    cartCountElements.forEach(element => {
+                                        element.textContent = data.cart_count;
+                                    });
+
+                                    // Update cart badge in header
+                                    const cartBadges = document.querySelectorAll(
+                                        '.fa-shopping-cart').forEach(icon => {
+                                        const parent = icon.closest('a');
+                                        if (parent && parent.querySelector(
+                                                '.bg-red-500')) {
+                                            const badge = parent.querySelector(
+                                                '.bg-red-500');
+                                            if (data.cart_count > 0) {
+                                                badge.textContent = data.cart_count;
+                                                badge.style.display = 'flex';
+                                            } else {
+                                                badge.style.display = 'none';
+                                            }
+                                        }
+                                    });
+                                }
+                            } else {
+                                // Show error notification
+                                showNotification(data.message ||
+                                    'Gagal menambahkan ke keranjang', 'error');
+                            }
+
+                            // Reset button
+                            button.innerHTML = originalText;
+                            button.disabled = false;
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showNotification('Terjadi kesalahan saat menambahkan ke keranjang',
+                                'error');
+
+                            // Reset button
+                            button.innerHTML = originalText;
+                            button.disabled = false;
+                        });
+                });
             });
-        }, observerOptions);
 
-        // Observe all product cards
-        document.querySelectorAll('.product-card').forEach(card => {
-            observer.observe(card);
-        });
+            // Function to show notification
+            function showNotification(message, type = 'success') {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                    type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                } text-white`;
+                notification.textContent = message;
 
-        // Add ripple effect to buttons
-        document.querySelectorAll('.btn-primary, .page-link').forEach(button => {
-            button.addEventListener('click', function(e) {
-                const ripple = document.createElement('span');
-                const rect = this.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height);
-                const x = e.clientX - rect.left - size / 2;
-                const y = e.clientY - rect.top - size / 2;
+                // Add to body
+                document.body.appendChild(notification);
 
-                ripple.style.width = ripple.style.height = size + 'px';
-                ripple.style.left = x + 'px';
-                ripple.style.top = y + 'px';
-                ripple.classList.add('ripple');
-
-                this.appendChild(ripple);
-
+                // Remove after 3 seconds
                 setTimeout(() => {
-                    ripple.remove();
-                }, 600);
-            });
+                    notification.remove();
+                }, 3000);
+            }
         });
     </script>
 

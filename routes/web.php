@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConsumerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProdukController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -113,6 +115,17 @@ Route::prefix('konsumen')
         // Dashboard Konsumen
         Route::get('/dashboard', [ConsumerController::class, 'dashboard'])->name('dashboard');
 
+        // Cart
+        Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+        Route::post('/cart/add/{productId}', [CartController::class, 'add'])->name('cart.add');
+        Route::post('/cart/update', [CartController::class, 'update'])->name('cart.update');
+        Route::get('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+        Route::get('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+        Route::post('/checkout', [CartController::class, 'checkout'])->name('checkout');
+        Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
+
+
+
         // Browse & Search Products
         Route::get('/produk', [ConsumerController::class, 'browse'])->name('browse');
         Route::get('/produk/search', [ConsumerController::class, 'search'])->name('search');
@@ -175,6 +188,14 @@ Route::fallback(function () {
     // Default 404 page
     return response()->view('errors.404', [], 404);
 });
+
+
+// ====================
+// Route produk
+//=====================
+
+Route::resource('produk',ProdukController::class);
+Route::post('/produk/bulk-store', [ProdukController::class, 'bulkStore'])->name('produk.bulkStore');
 
 // ====================
 // REDIRECT ROUTES (Optional - untuk kemudahan)

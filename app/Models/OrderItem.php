@@ -3,23 +3,32 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderItem extends Model
 {
     protected $fillable = [
         'order_id',
-        'dummy_product_id',
+        'product_id',
+        'price',
         'quantity',
-        'price'
+        'subtotal',
+        'notes'
     ];
 
-    public function order()
+    /**
+     * Get the order that owns the item.
+     */
+    public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
     }
 
-    public function product()
+    /**
+     * Get the product that owns the item.
+     */
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(DummyProduct::class, 'dummy_product_id');
+        return $this->belongsTo(DummyProduct::class, 'product_id');
     }
 }

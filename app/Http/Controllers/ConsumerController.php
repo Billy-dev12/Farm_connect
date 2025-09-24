@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cart;
 use App\Models\DummyProduct;
 use App\Models\User;
 use App\Models\Address;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 class ConsumerController extends Controller
 {
     // Dashboard Konsumen
+
     public function dashboard()
     {
         $user = Auth::user();
@@ -261,15 +263,29 @@ class ConsumerController extends Controller
 
             // Validasi input
             $validated = $request->validate([
-                'label' => 'required|string|max:255',
-                'penerima' => 'required|string|max:255',
-                'no_hp' => 'required|string|max:15',
-                'alamat_lengkap' => 'required|string',
+                'label' => 'required|string|min:2|max:255',
+                'penerima' => 'required|string|min:3|max:255',
+                'no_hp' => 'required|string|regex:/^[0-9]{10,15}$/',
+                'alamat_lengkap' => 'required|string|min:10',
                 'provinsi' => 'required|string|max:255',
                 'kota' => 'required|string|max:255',
                 'kecamatan' => 'required|string|max:255',
-                'kode_pos' => 'required|string|max:10',
+                'kode_pos' => 'required|string|regex:/^[0-9]{5}$/',
                 'is_default' => 'boolean'
+            ], [
+                'label.required' => 'Label alamat harus diisi',
+                'label.min' => 'Label alamat minimal 2 karakter',
+                'penerima.required' => 'Nama penerima harus diisi',
+                'penerima.min' => 'Nama penerima minimal 3 karakter',
+                'no_hp.required' => 'Nomor HP harus diisi',
+                'no_hp.regex' => 'Nomor HP harus 10-15 digit angka',
+                'alamat_lengkap.required' => 'Alamat lengkap harus diisi',
+                'alamat_lengkap.min' => 'Alamat lengkap minimal 10 karakter',
+                'provinsi.required' => 'Provinsi harus diisi',
+                'kota.required' => 'Kota/Kabupaten harus diisi',
+                'kecamatan.required' => 'Kecamatan harus diisi',
+                'kode_pos.required' => 'Kode pos harus diisi',
+                'kode_pos.regex' => 'Kode pos harus 5 digit angka'
             ]);
 
             // Ambil user yang sedang login
@@ -309,12 +325,13 @@ class ConsumerController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Log validation error
-            Log::error('Validation error:', ['errors' => $e->errors()->all()]);
+            Log::error('Validation error:', ['errors' => $e->errors()]);
 
             // Jika terjadi error validasi
             return response()->json([
                 'success' => false,
-                'message' => 'Validasi gagal: ' . implode(', ', $e->errors()->all())
+                'message' => 'Validasi gagal: ' . implode(', ', array_flatten($e->errors())),
+                'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             // Log general error
@@ -335,77 +352,230 @@ class ConsumerController extends Controller
 
     public function updateAddress(Request $request, $id)
     {
-        $validated = $request->validate([
-            'label' => 'required|string|max:255',
-            'penerima' => 'required|string|max:255',
-            'no_hp' => 'required|string|max:15',
-            'alamat_lengkap' => 'required|string',
-            'provinsi' => 'required|string|max:255',
-            'kota' => 'required|string|max:255',
-            'kecamatan' => 'required|string|max:255',
-            'kode_pos' => 'required|string|max:10',
-            'is_default' => 'boolean'
-        ]);
+        try {
+            // Log request
+            Log::info('Update address request:', [
+                'id' => $id,
+                'method' => $request->method(),
+                'data' => $request->all(),
+                'user_id' => Auth::id()
+            ]);
 
-        $user = Auth::user();
-        $address = $user->addresses()->findOrFail($id);
+            // Validasi input
+            $validated = $request->validate([
+                'label' => 'required|string|min:2|max:255',
+                'penerima' => 'required|string|min:3|max:255',
+                'no_hp' => 'required|string|regex:/^[0-9]{10,15}$/',
+                'alamat_lengkap' => 'required|string|min:10',
+                'provinsi' => 'required|string|max:255',
+                'kota' => 'required|string|max:255',
+                'kecamatan' => 'required|string|max:255',
+                'kode_pos' => 'required|string|regex:/^[0-9]{5}$/',
+                'is_default' => 'boolean'
+            ], [
+                'label.required' => 'Label alamat harus diisi',
+                'label.min' => 'Label alamat minimal 2 karakter',
+                'penerima.required' => 'Nama penerima harus diisi',
+                'penerima.min' => 'Nama penerima minimal 3 karakter',
+                'no_hp.required' => 'Nomor HP harus diisi',
+                'no_hp.regex' => 'Nomor HP harus 10-15 digit angka',
+                'alamat_lengkap.required' => 'Alamat lengkap harus diisi',
+                'alamat_lengkap.min' => 'Alamat lengkap minimal 10 karakter',
+                'provinsi.required' => 'Provinsi harus diisi',
+                'kota.required' => 'Kota/Kabupaten harus diisi',
+                'kecamatan.required' => 'Kecamatan harus diisi',
+                'kode_pos.required' => 'Kode pos harus diisi',
+                'kode_pos.regex' => 'Kode pos harus 5 digit angka'
+            ]);
 
-        // Jika dijadikan default, set yang lain jadi false
-        if (isset($validated['is_default']) && $validated['is_default']) {
-            $user->addresses()->where('id', '!=', $id)->update(['is_default' => false]);
+            $user = Auth::user();
+            $address = $user->addresses()->findOrFail($id);
+
+            // Jika dijadikan default, set yang lain jadi false
+            if (isset($validated['is_default']) && $validated['is_default']) {
+                $user->addresses()->where('id', '!=', $id)->update(['is_default' => false]);
+            }
+
+            $address->update($validated);
+
+            // Kembalikan response JSON untuk AJAX
+            return response()->json([
+                'success' => true,
+                'message' => 'Alamat berhasil diperbarui!',
+                'address' => $address
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Log validation error
+            Log::error('Validation error:', ['errors' => $e->errors()]);
+
+            // Jika terjadi error validasi
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Log error
+            Log::error('Address not found:', ['id' => $id, 'user_id' => Auth::id()]);
+
+            // Jika alamat tidak ditemukan
+            return response()->json([
+                'success' => false,
+                'message' => 'Alamat tidak ditemukan!'
+            ], 404);
+        } catch (\Exception $e) {
+            // Log general error
+            Log::error('Update address error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Jika terjadi error lainnya
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
         }
-
-        $address->update($validated);
-
-        return redirect()->route('konsumen.addresses')
-            ->with('success', 'Alamat berhasil diperbarui!');
     }
 
     public function deleteAddress($id)
     {
-        $user = Auth::user();
-        $address = $user->addresses()->findOrFail($id);
+        try {
+            $user = Auth::user();
+            $address = $user->addresses()->findOrFail($id);
 
-        // Cek jika ini alamat default, tidak boleh dihapus
-        if ($address->is_default) {
-            return redirect()->route('konsumen.addresses')
-                ->with('error', 'Alamat utama tidak dapat dihapus!');
+            // Cek jika ini alamat default, tidak boleh dihapus
+            if ($address->is_default) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Alamat utama tidak dapat dihapus!'
+                ], 400);
+            }
+
+            $address->delete();
+
+            // Kembalikan response JSON untuk AJAX
+            return response()->json([
+                'success' => true,
+                'message' => 'Alamat berhasil dihapus!'
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Log error
+            Log::error('Address not found:', ['id' => $id, 'user_id' => Auth::id()]);
+
+            // Jika alamat tidak ditemukan
+            return response()->json([
+                'success' => false,
+                'message' => 'Alamat tidak ditemukan!'
+            ], 404);
+        } catch (\Exception $e) {
+            // Log general error
+            Log::error('Delete address error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Jika terjadi error lainnya
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
         }
-
-        $address->delete();
-
-        return redirect()->route('konsumen.addresses')
-            ->with('success', 'Alamat berhasil dihapus!');
     }
 
     public function getAddress($id)
     {
-        $user = Auth::user();
-        $address = $user->addresses()->findOrFail($id);
+        try {
+            $user = Auth::user();
+            $address = $user->addresses()->findOrFail($id);
 
-        return response()->json($address);
+            return response()->json($address);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Log error
+            Log::error('Address not found:', ['id' => $id, 'user_id' => Auth::id()]);
+
+            // Jika alamat tidak ditemukan
+            return response()->json([
+                'success' => false,
+                'message' => 'Alamat tidak ditemukan!'
+            ], 404);
+        } catch (\Exception $e) {
+            // Log general error
+            Log::error('Get address error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Jika terjadi error lainnya
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function setDefaultAddress($id)
     {
-        $user = Auth::user();
-        $address = $user->addresses()->findOrFail($id);
+        try {
+            $user = Auth::user();
+            $address = $user->addresses()->findOrFail($id);
 
-        // Set semua alamat lain menjadi non-default
-        $user->addresses()->where('id', '!=', $id)->update(['is_default' => false]);
+            // Set semua alamat lain menjadi non-default
+            $user->addresses()->where('id', '!=', $id)->update(['is_default' => false]);
 
-        // Set alamat ini menjadi default
-        $address->update(['is_default' => true]);
+            // Set alamat ini menjadi default
+            $address->update(['is_default' => true]);
 
-        return redirect()->route('konsumen.addresses')
-            ->with('success', 'Alamat utama berhasil diperbarui!');
+            // Kembalikan response JSON untuk AJAX
+            return response()->json([
+                'success' => true,
+                'message' => 'Alamat utama berhasil diperbarui!'
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Log error
+            Log::error('Address not found:', ['id' => $id, 'user_id' => Auth::id()]);
+
+            // Jika alamat tidak ditemukan
+            return response()->json([
+                'success' => false,
+                'message' => 'Alamat tidak ditemukan!'
+            ], 404);
+        } catch (\Exception $e) {
+            // Log general error
+            Log::error('Set default address error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Jika terjadi error lainnya
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     // Riwayat Pembelian
     public function purchaseHistory()
     {
         $user = Auth::user();
-        $orders = $user->orders()->orderBy('created_at', 'desc')->paginate(10);
+
+        // Ambil semua pesanan user dengan relasi items dan products
+        $orders = $user->orders()
+            ->with(['items.product', 'address']) // Load relasi yang diperlukan
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
 
         return view('consumer.purchase-history', compact('orders'));
     }
@@ -413,8 +583,214 @@ class ConsumerController extends Controller
     public function purchaseDetail($id)
     {
         $user = Auth::user();
-        $order = $user->orders()->with('items.product')->findOrFail($id);
+
+        // Ambil detail pesanan dengan semua relasi yang diperlukan
+        $order = $user->orders()
+            ->with(['items.product.farmer', 'address']) // Load relasi produk dan petani
+            ->findOrFail($id);
 
         return view('consumer.purchase-detail', compact('order'));
+    }
+
+    // Fungsi untuk membuat pesanan baru (jika diperlukan)
+    public function createOrder(Request $request)
+    {
+        $user = Auth::user();
+
+        // Validasi input
+        $validated = $request->validate([
+            'address_id' => 'required|exists:addresses,id',
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:dummy_products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string'
+        ]);
+
+        // Hitung subtotal
+        $subtotal = 0;
+        $orderItems = [];
+
+        foreach ($validated['items'] as $item) {
+            $product = DummyProduct::findOrFail($item['product_id']);
+
+            // Cek stok
+            if ($product->stok < $item['quantity']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Stok untuk {$product->nama_produk} tidak mencukupi"
+                ], 400);
+            }
+
+            $itemSubtotal = $product->harga * $item['quantity'];
+            $subtotal += $itemSubtotal;
+
+            $orderItems[] = [
+                'product_id' => $product->id,
+                'price' => $product->harga,
+                'quantity' => $item['quantity'],
+                'subtotal' => $itemSubtotal
+            ];
+        }
+
+        // Hitung ongkos kirim (bisa dihitung berdasarkan alamat atau berat total)
+        $shippingCost = $this->calculateShippingCost($validated['address_id'], $orderItems);
+
+        // Total amount
+        $totalAmount = $subtotal + $shippingCost;
+
+        // Buat pesanan
+        $order = new Order();
+        $order->user_id = $user->id;
+        $order->address_id = $validated['address_id'];
+        $order->order_number = Order::generateOrderNumber();
+        $order->subtotal = $subtotal;
+        $order->shipping_cost = $shippingCost;
+        $order->total_amount = $totalAmount;
+        $order->status = 'Pending';
+        $order->payment_status = 'Unpaid';
+        $order->notes = $validated['notes'] ?? null;
+        $order->save();
+
+        // Simpan order items
+        foreach ($orderItems as $item) {
+            $orderItem = new OrderItem();
+            $orderItem->order_id = $order->id;
+            $orderItem->product_id = $item['product_id'];
+            $orderItem->price = $item['price'];
+            $orderItem->quantity = $item['quantity'];
+            $orderItem->subtotal = $item['subtotal'];
+            $orderItem->save();
+
+            // Kurangi stok produk
+            $product = DummyProduct::find($item['product_id']);
+            $product->stok -= $item['quantity'];
+            $product->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesanan berhasil dibuat',
+            'order_id' => $order->id,
+            'order_number' => $order->order_number
+        ]);
+    }
+
+    // Fungsi untuk menghitung ongkos kirim (contoh sederhana)
+    private function calculateShippingCost($addressId, $items)
+    {
+        // Di sini Anda bisa menghitung ongkos kirim berdasarkan alamat dan berat/total item
+        // Untuk sementara, kita return nilai statis
+        return 10000; // Rp 10.000
+    }
+
+    // Fungsi untuk update status pesanan (jika diperlukan)
+    public function updateOrderStatus(Request $request, $id)
+    {
+        $user = Auth::user();
+        $order = $user->orders()->findOrFail($id);
+
+        $validated = $request->validate([
+            'status' => 'required|in:Pending,Processed,Shipped,Completed,Cancelled'
+        ]);
+
+        $order->status = $validated['status'];
+
+        // Update timestamp berdasarkan status
+        switch ($validated['status']) {
+            case 'Processed':
+                $order->processed_at = now();
+                break;
+            case 'Shipped':
+                $order->shipped_at = now();
+                break;
+            case 'Completed':
+                $order->completed_at = now();
+                break;
+            case 'Cancelled':
+                $order->cancelled_at = now();
+
+                // Kembalikan stok produk
+                foreach ($order->items as $item) {
+                    $product = $item->product;
+                    $product->stok += $item->quantity;
+                    $product->save();
+                }
+                break;
+        }
+
+        $order->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status pesanan berhasil diperbarui',
+            'order' => $order
+        ]);
+    }
+
+    public function addToCart(Request $request, $productId)
+    {
+        try {
+            $user = Auth::user();
+            $product = DummyProduct::findOrFail($productId);
+
+            // Check if product is available
+            if (!$product->isInStock()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Produk tidak tersedia atau stok habis'
+                ], 400);
+            }
+
+            // Check if product already in cart
+            $existingCartItem = $user->carts()
+                ->where('product_id', $productId)
+                ->first();
+
+            if ($existingCartItem) {
+                // Update quantity if already in cart
+                $newQuantity = $existingCartItem->quantity + 1;
+
+                // Check if stock is sufficient
+                if ($newQuantity > $product->stok) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Stok tidak mencukupi'
+                    ], 400);
+                }
+
+                $existingCartItem->quantity = $newQuantity;
+                $existingCartItem->calculateSubtotal();
+                $existingCartItem->save();
+
+                $message = 'Jumlah produk di keranjang diperbarui';
+            } else {
+                // Add new item to cart
+                $cartItem = new Cart();
+                $cartItem->user_id = $user->id;
+                $cartItem->product_id = $productId;
+                $cartItem->quantity = 1;
+                $cartItem->price = $product->harga;
+                $cartItem->calculateSubtotal();
+                $cartItem->save();
+
+                $message = 'Produk berhasil ditambahkan ke keranjang';
+            }
+
+            // Get cart count
+            $cartCount = $user->carts()->count();
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'cart_count' => $cartCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error adding to cart: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
