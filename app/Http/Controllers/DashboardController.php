@@ -24,8 +24,8 @@ class DashboardController extends Controller
         }
 
         // Statistik untuk petani
-        $totalProduk = Produk::where('user_id', $user->id)->count();
-        $produkAktif = Produk::where('user_id', $user->id)->where('stok', '>', 0)->count();
+        $totalProduk = DummyProduct::where('user_id', $user->id)->count();
+        $produkAktif = DummyProduct::where('user_id', $user->id)->where('stok', '>', 0)->count();
         $totalPesanan = Pesanan::whereHas('detail', function ($query) use ($user) {
             $query->whereHas('produk', function ($q) use ($user) {
                 $q->where('user_id', $user->id);

@@ -598,8 +598,6 @@
             <div style="text-align: center; margin-top: 20px; font-size: 14px;">
                 <p>Sudah punya akun? <a href="{{ route('login') }}"
                         style="color: #4a7c59; text-decoration: none;">Login di sini</a></p>
-                <p>Atau <a href="{{ route('register.consumer') }}"
-                        style="color: #4a7c59; text-decoration: none;">Daftar sebagai Konsumen</a></p>
             </div>
         </div>
 
