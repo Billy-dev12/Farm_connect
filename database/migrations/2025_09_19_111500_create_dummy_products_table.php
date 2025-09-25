@@ -10,7 +10,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
+        Schema::create('dummy_products', function (Blueprint $table) {
             $table->id();
             $table->string('nama_produk');
             $table->text('deskripsi')->nullable();
