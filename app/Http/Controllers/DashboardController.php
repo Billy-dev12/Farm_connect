@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DummyProduct;
 use App\Models\User;
 use App\Models\Produk;
 use App\Models\Pesanan;
@@ -74,6 +75,8 @@ class DashboardController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
-        return view('dashboard.customer', compact('user'));
+        $latestProducts = DummyProduct::latest()->take(6)->get();
+
+        return view('dashboard.customer', compact('user', 'latestProducts'));
     }
 }
