@@ -63,7 +63,7 @@ class AuthController extends Controller
             Auth::login($user);
 
             // 4. Redirect dengan success message
-            return redirect()->route('dashboard.customer')
+            return redirect()->route('konsumen.dashboard')
                 ->with('success', 'Selamat datang, ' . $user->name . '! 🎉 Akunmu berhasil dibuat. Yuk, jelajahi platform pertanian kami!');
 
         } catch (ValidationException $e) {
